@@ -9,11 +9,13 @@
 ###############################################################
 #
 import array, time
-from machine import Pin
-import rp2
 from machine import ADC
+import rp2
 import utime
 import math
+from machine import Pin, I2C
+from ssd1306 import SSD1306_I2C
+
 #
 ############################################
 # RP2040 PIO and Pin Configurations
@@ -21,7 +23,7 @@ import math
 #
 # WS2812 LED Ring Configuration
 led_count = 11 # number of LEDs in ring light
-PIN_NUM = 0 # pin connected to ring light
+PIN_NUM = 2 # pin connected to ring light
 brightness = 1 # 0.1 = darker, 1.0 = brightest
 brightnessv = 0.075 # 0.0 = darker, 1.0 = brightest
 speed = 255 # 10, 50, 100 corresponds to BPM being below 80, 80 ~ 100, 100
@@ -30,6 +32,7 @@ pulse=ADC(28)
 
 @rp2.asm_pio(sideset_init=rp2.PIO.OUT_LOW, out_shiftdir=rp2.PIO.SHIFT_LEFT,
              autopull=True, pull_thresh=24) # PIO configuration
+
 
 # define WS2812 parameters
 def ws2812():
@@ -55,6 +58,15 @@ sm.active(1)
 
 # Range of LEDs stored in an array
 ar = array.array("I", [0 for _ in range(led_count)])
+
+
+pix_res_x = 128
+pix_res_y = 64
+i2c=I2C(0,sda=Pin(0), scl=Pin(1), freq=400000)
+oled = SSD1306_I2C(pix_res_x, pix_res_y, i2c)
+
+oled.text("xiao's OLED", 0, 0)
+oled.show()
 #
 ############################################
 # Functions for RGB Coloring
@@ -95,7 +107,8 @@ def breathing_led(color, pulse_value):
         # Apply intensity factor (clamped between 0 and 1)
     
     
-    brightness= math.exp(pulse_value/3000000)
+    #brightness= math.exp(pulse_value/3000000)
+    brightness= (pulse_value/6553600)
     #print(brightness)
     
     #brightness = (ii / 255) * max(0.0, min(brightnessv, intensity)) #test for pulse input
@@ -105,7 +118,9 @@ def breathing_led(color, pulse_value):
     
                 
                 
-        
+def map_value(x, in_min, in_max, out_min, out_max):
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
         
 
 #
@@ -144,14 +159,14 @@ idx = 0
 # save data for 200 data points to compute max and min, so that we can have a proper threshold for peak detection
 # too short of a window will not have the proper range of pulse value
 # too long of a window will be wasteful of RAM
-max_min_size = 200
+max_min_size = pix_res_x #was 200
 max_min_window = [0] * max_min_size
 idx_max_min = 0
 
 
 # save peak information, including timing of peak, value of peak
 peak_list_size = 5
-peak_list = [utime.ticks_ms()] * peak_list_size
+peak_list = [0] * peak_list_size
 peak_idx = 0
 
 # record difference in moving average
@@ -165,14 +180,13 @@ bpm = 0
     
     
 file = open("peak_detection.txt", "w")
-    
+
+
 while True: # loop indefinitely
      
     # Read raw PPG value (16-bit)
     raw = pulse.read_u16()
     
-    
-                    
     
     # Add to moving average window
     window[idx] = raw
@@ -206,12 +220,24 @@ while True: # loop indefinitely
     max_min_window[idx_max_min] =raw
     idx_max_min = (idx_max_min+1)%max_min_size
     x_threshold = (max(max_min_window) - min(max_min_window)) * 0.7 + min(max_min_window)
+    
+    
+    
+    #only update once per full max_min_window
+    if (idx_max_min % max_min_size ==max_min_size-1):
+        oled.fill(0) # clear the display
+        for jj in range(pix_res_x):
+            plot_pt = (max_min_window[jj]/((2**16)-1))*(pix_res_y-1) # convert to OLED pixels
+            oled.text('.',jj,pix_res_y - int(plot_pt))
+        oled.show() # Render the updates to the screen
+                    
+                    
        
     # collect moving average, threshold computed, time interval from last peak into a txt file   
     #file.write("no peak, "+ str(moving_average) +", "+ str(x_threshold) +", "+ str(utime.ticks_diff(utime.ticks_ms(), peak_timing))+", "+"\n")
   
    # Detect peak (derivative at and before the time point is positive and negative respectively, above threshold, sufficient time interval from last peak)
-    if ((diff_multi_prev_diff <= 0  ) & (moving_average >= x_threshold) & (utime.ticks_diff(utime.ticks_ms(), peak_timing) >= timing_threshold )):
+    if ((diff_multi_prev_diff< 0  ) and (moving_average >= x_threshold) and (utime.ticks_diff(utime.ticks_ms(), peak_timing) >= timing_threshold )):
         
         beat_count += 1
         peak_timing = utime.ticks_ms()
@@ -221,7 +247,7 @@ while True: # loop indefinitely
         #file.write("peak detected, "+str(moving_average) +", "+ str(x_threshold) +", "+ str(utime.ticks_diff(utime.ticks_ms(), peak_timing))+", "+"\n")
       
         # when the beat count is bigger than peak_list_size, aka no zeros in the peak list, we can computer BPM
-        if beat_count >=peak_list_size:
+        if beat_count >=10:
             bpm = (peak_list_size * 60) / utime.ticks_diff(max(peak_list) , min(peak_list))  * 1000            
             print(f"BPM: {int(bpm)}")
                 
