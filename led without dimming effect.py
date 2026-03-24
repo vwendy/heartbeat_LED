@@ -22,7 +22,7 @@ import rp2
 
 # LED Ring Configuration
 LED_COUNT = 11              # Number of LEDs in the ring light
-PIN_NUM = 0                 # GPIO pin connected to WS2812 data line
+PIN_NUM = 2                 # GPIO pin connected to WS2812 data line
 LED_BRIGHTNESS = 1.0        # Global brightness multiplier (0.1 = dim, 1.0 = bright)
 LED_BRIGHTNESS_VAR = 0.075  # Additional brightness variation factor (unused in current code)
 SPEED = 255                 # Speed parameter for breathing animation (255 = fastest)
