@@ -1,0 +1,59 @@
+---
+title: "visualize pulse sensor data and peak detected"
+output: html_document
+date: "2026-01-16"
+---
+```{r}
+
+library(ggplot2)
+
+library(dplyr)
+
+```
+
+
+
+<!-- ```{r} -->
+<!-- data <- read.csv("C:/Users/vwend/Downloads/peak_detection.txt", header=FALSE) -->
+<!-- names(data) <-c("peak","ma","threshold", "time_diff") -->
+<!-- ``` -->
+
+
+
+
+<!-- ```{r} -->
+<!-- data$row <- 1:nrow(data) -->
+<!-- ggplot(data = data)+ -->
+<!--     geom_line(aes(x=row, y = ma),color = "blue") + -->
+<!--     geom_line(aes(x=row, y = threshold),color = "red") + -->
+<!--       geom_point(data = data[data$peak =="peak detected",],aes(x=row, y = ma,color = factor(peak))) -->
+<!-- ``` -->
+
+
+
+```{r}
+heartbeat_data <- read.csv("C:/Users/vwend/Downloads/heartbeat_data.txt", dec=",")
+names(heartbeat_data)[1] <-c("time")
+
+heartbeat_data$time <- as.numeric(heartbeat_data$time)
+heartbeat_data$raw_ppg <- as.numeric(heartbeat_data$raw_ppg)
+heartbeat_data$moving_avg <- as.numeric(heartbeat_data$moving_avg)
+heartbeat_data$threshold  <- as.numeric(heartbeat_data$threshold )
+heartbeat_data$peak <- ifelse(heartbeat_data$peak == " PEAK ",1,0)
+```
+
+
+
+
+```{r}
+ggplot(data = heartbeat_data)+
+    # geom_line(aes(x=time, y = raw_ppg),color = "blue") +
+    geom_line(aes(x=time, y = threshold),color = "red") +
+    geom_line(aes(x=time, y = moving_avg),color = "orange") +
+      geom_point(data = heartbeat_data[heartbeat_data$peak ==1,],aes(x=time, y = moving_avg)
+                     # color = factor(peak), 
+                     # shape = factor(peak)), 
+                 ,color = "black"
+                    ,size=2)+
+  theme_classic()
+```
