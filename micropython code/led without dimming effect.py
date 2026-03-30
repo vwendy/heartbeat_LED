@@ -742,7 +742,7 @@ def main():
     
     # Initialize signal processor and data logger
     ppg_processor = PPGSignalProcessor()
-    data_logger = DataLogger("heartbeat_data.txt", buffer_size=50)
+    #data_logger = DataLogger("heartbeat_data.txt", buffer_size=50)
     
     # Track start time for relative timestamps
     start_time = utime.ticks_ms()
@@ -761,6 +761,7 @@ def main():
             result = ppg_processor.update(raw_ppg_value)
             
             # Log the data for later analysis
+            '''
             data_logger.log_data(
                 elapsed_ms,
                 raw_ppg_value,
@@ -769,6 +770,7 @@ def main():
                 result['peak_detected'],
                 result['bpm']
             )
+            '''
             
             # Select LED color based on current heart rate
             led_color = get_led_color_for_bpm(ppg_processor.current_bpm)
@@ -793,7 +795,7 @@ def main():
         print("=" * 60)
         
         # Finalize data logging
-        data_logger.stop_logging()
+        #data_logger.stop_logging()
         
         # Turn off all LEDs
         set_all_leds(BLACK, 0)
